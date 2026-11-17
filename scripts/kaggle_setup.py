@@ -34,8 +34,30 @@ import sys
 import tarfile
 from pathlib import Path
 
-INPUT_DEFAULT = Path("/kaggle/input/dreams-pretrained")
 WORK_DEFAULT = Path("/kaggle/working/DreaMS")
+
+
+def find_input_dir() -> Path:
+    """Locate the dataset input dir on Kaggle.
+
+    The dataset may mount at /kaggle/input/<slug> and/or
+    /kaggle/input/datasets/<owner>/<slug>, so auto-discover it instead of
+    hardcoding one layout.
+    """
+    base = Path("/kaggle/input")
+    if base.is_dir():
+        # Fastest: a directory that already contains a checkpoint or the repo.
+        for cand in base.rglob("embedding_model.ckpt"):
+            return cand.parent
+        for cand in base.rglob("DreaMS"):
+            if (cand / "setup.py").exists():
+                return cand.parent
+    # Fallbacks (never reached on Kaggle if the dataset is attached).
+    for slug in ("dreams-pretrained",):
+        for cand in (Path("/kaggle/input") / slug, Path("/kaggle/input/datasets") / "smeeee" / slug):
+            if cand.exists():
+                return cand
+    return Path("/kaggle/input") / slug
 
 #: Checkpoint files stored at the top level of the dataset.
 CKPTS = ("embedding_model.ckpt", "ssl_model.ckpt")
@@ -48,8 +70,8 @@ def _fail(msg: str) -> "NoReturn":  # type: ignore[name-defined]
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input-dir", type=Path, default=INPUT_DEFAULT,
-                        help="dataset staging/input dir (default: %(default)s)")
+    parser.add_argument("--input-dir", type=Path, default=None,
+                        help="dataset staging/input dir (default: auto-detected under /kaggle/input)")
     parser.add_argument("--work-dir", type=Path, default=WORK_DEFAULT,
                         help="writable target for the repo copy (default: %(default)s)")
     parser.add_argument("--python", dest="python_bin", type=Path, default=Path(sys.executable),
@@ -57,6 +79,10 @@ def main() -> None:
     parser.add_argument("--skip-install", action="store_true",
                         help="skip pip install (e.g. deps already installed)")
     args = parser.parse_args()
+
+    if args.input_dir is None:
+        args.input_dir = find_input_dir()
+        print(f"[*] detected dataset input: {args.input_dir}")
 
     inp = args.input_dir
     repo_src = inp / "DreaMS"

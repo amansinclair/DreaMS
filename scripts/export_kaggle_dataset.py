@@ -81,6 +81,23 @@ def repo_pretrained_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "dreams" / "models" / "pretrained"
 
 
+#: Where the checkpoints live when the dataset is mounted in a Kaggle notebook.
+KAGGLE_INPUT_CANDIDATES = [
+    Path("/kaggle/input/dreams-pretrained"),
+    Path("/kaggle/input/datasets/smeeee/dreams-pretrained"),
+    Path("/kaggle/input/datasets/smeeeee/dreams-pretrained"),
+]
+
+
+def resolve_model_dir(given: Path) -> Path:
+    """Return ``given`` if it holds the checkpoints, else the first candidate
+    (including Kaggle input paths) that does, else ``given`` unchanged."""
+    for cand in (given, *KAGGLE_INPUT_CANDIDATES):
+        if any((cand / name).exists() for name in MODEL_FILES):
+            return cand
+    return given
+
+
 def ensure_weights(local_dir: Path) -> None:
     """Download any missing checkpoint into ``local_dir`` from the HF repo."""
     from huggingface_hub import hf_hub_download
@@ -215,7 +232,8 @@ def main() -> None:
         default=repo_pretrained_dir(),
         help=f"local dir with checkpoints (default: {repo_pretrained_dir()})",
     )
-    parser.add_argument("--staging-dir", type=Path, default=Path("build/dreams_kaggle_dataset"))
+    parser.add_argument("--staging-dir", type=Path, default=None,
+                        help="writable dir to stage the dataset (default: build/dreams_kaggle_dataset, or /kaggle/working on Kaggle)")
     parser.add_argument(
         "--repo-root",
         type=Path,
@@ -238,6 +256,14 @@ def main() -> None:
     parser.add_argument("--update", action="store_true", help="upload a new version instead of creating")
     parser.add_argument("--message", default="Updated DreaMS pretrained weights")
     args = parser.parse_args()
+
+    if args.staging_dir is None:
+        args.staging_dir = Path("build/dreams_kaggle_dataset")
+        if str(Path.cwd()).startswith("/kaggle/input"):
+            # /kaggle/input is read-only; stage into the writable working dir.
+            args.staging_dir = Path("/kaggle/working") / "dreams_kaggle_dataset"
+
+    args.model_dir = resolve_model_dir(args.model_dir)
 
     if args.dataset_id is None:
         # Auto-detect the Kaggle username from the authenticated kaggle CLI.
