@@ -10,9 +10,9 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
 # Platform-specific pyopenms version (TMP workaround for macOS)
 def get_pyopenms_dep():
     if sys.platform.lower().startswith("darwin"):
-        return "pyopenms==3.3.0"  # macOS
+        return "pyopenms>=3.3.0"  # macOS
     else:  # sys.platform.lower().startswith("linux"):
-        return "pyopenms==3.4.0"  # Linux or other platforms
+        return "pyopenms>=3.4.0"  # Linux or other platforms
 
 setup(
     name="dreams",
@@ -24,30 +24,32 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/pluskal-lab/DreaMS",
+    # Loosened from tight `==` pins so the package installs on recent Python
+    # versions (3.13+), e.g. Kaggle. Follow the README-installed versions for
+    # the originally-supported Python 3.11.
     install_requires=[
-        "numpy==1.25.0",
-        "numba==0.58.0",
-        "torch==2.2.1",
-        "pytorch-lightning==2.0.8",
-        "torchmetrics==1.3.2",
-        "pandas==2.2.1",
-        "pyarrow==15.0.2",
-        "h5py==3.11.0",
-        "rdkit==2023.9.6",
-        "umap-learn==0.5.6",
-        "scikit-learn<1.6",
-        "seaborn==0.13.2",
-        "plotly==5.20.0",
-        "ase==3.22.1",
-        "wandb==0.16.4",
-        "pandarallel==1.6.5",
-        "matchms==0.27.0",
+        "numpy>=1.26.4,<2.3",
+        "numba>=0.61.3",
+        "torch>=2.6",
+        "pytorch-lightning>=2.4,<3.0",
+        "torchmetrics>=1.4",
+        "pandas>=2.2.3,<3.0",  # pandarallel 1.6.5 is incompatible with pandas 3.x
+        "pyarrow>=16",
+        "h5py>=3.12",
+        "rdkit>=2024.9.1",
+        "umap-learn>=0.5.6",
+        "scikit-learn>=1.4,<1.8",
+        "seaborn>=0.13.2",
+        "plotly>=5.20.0",
+        "ase>=3.22.1",
+        "wandb>=0.16.4",
+        "pandarallel>=1.6.5",
+        "matchms>=0.27.0",
         get_pyopenms_dep(),
-        "igraph==0.11.4",
-        "molplotly==1.1.7",
-        "fire==0.6.0",
-        "huggingface_hub==0.33.5",
-        "setuptools==81.0.0",
+        "igraph>=0.11.4",
+        "fire>=0.6.0",
+        "huggingface_hub>=0.33.5",
+        "setuptools>=81.0.0",
         "msml @ git+https://github.com/roman-bushuiev/msml_legacy_architectures.git@main"
     ],
     extras_require={
