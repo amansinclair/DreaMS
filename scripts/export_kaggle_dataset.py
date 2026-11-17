@@ -37,9 +37,18 @@ The dataset slug is ``{username}/dreams-pretrained`` (override with
 ``--dataset-id``). ``--upload`` creates the dataset the first time and
 uploads a new version on later runs.
 
-Example: loading the dataset in a Kaggle notebook
--------------------------------------------------
-.. code-block:: python
+By default the dataset also contains a clean copy of the DreaMS repo
+(git archive of HEAD, ~70 MB) as the ``DreaMS/`` folder, so a Kaggle
+notebook needs only this one dataset to get both the code and the weights.
+
+Example: setting up a Kaggle notebook
+-------------------------------------
+Add ``smeeee/dreams-pretrained`` as an input to the notebook, then run the
+ready-made setup script from the dataset::
+
+    %run -i /kaggle/input/dreams-pretrained/DreaMS/scripts/kaggle_setup.py
+
+or use the small helper below::
 
     import pathlib
     DST = pathlib.Path("/kaggle/working/DreaMS/dreams/models/pretrained")
@@ -92,6 +101,33 @@ def ensure_weights(local_dir: Path) -> None:
         )
 
 
+def package_repo(staging: Path, repo_root: Path, dest_dir: str = "DreaMS") -> None:
+    """Extract a clean copy of the tracked repo into ``staging/dest_dir``.
+
+    Uses ``git archive HEAD`` so only tracked files are included (no
+    checkpoints, venvs, staging dirs, etc.).
+    """
+    if not (repo_root / ".git").exists():
+        raise FileNotFoundError(f"{repo_root} is not a git repository; cannot package the repo")
+
+    dest = staging / dest_dir
+    dest.mkdir(parents=True, exist_ok=True)
+
+    archive = subprocess.run(
+        ["git", "-C", str(repo_root), "archive", "--format=tar", "HEAD"],
+        capture_output=True,
+    )
+    if archive.returncode != 0:
+        raise RuntimeError(f"git archive failed: {archive.stderr.decode().strip()}")
+
+    extract = subprocess.run(["tar", "-x", "-C", str(dest)], input=archive.stdout)
+    if extract.returncode != 0:
+        raise RuntimeError(f"tar extraction failed: {extract.stderr.decode().strip()}")
+
+    n_files = sum(1 for _ in dest.rglob("*"))
+    print(f"[*] packaged repo -> {dest} ({n_files} files)")
+
+
 def write_metadata(staging: Path, dataset_id: str, title: str, subtitle: str) -> None:
     metadata = {
         "id": dataset_id,
@@ -104,9 +140,22 @@ def write_metadata(staging: Path, dataset_id: str, title: str, subtitle: str) ->
     print(f"[*] wrote {staging / 'dataset-metadata.json'}")
 
 
-def package(local_dir: Path, staging: Path, dataset_id: str, title: str, subtitle: str) -> None:
-    """Copy the checkpoints and write Kaggle metadata into ``staging``."""
+def package(
+    local_dir: Path,
+    staging: Path,
+    dataset_id: str,
+    title: str,
+    subtitle: str,
+    include_repo: bool = True,
+    repo_root: Path | None = None,
+) -> None:
+    """Copy the checkpoints, (optionally) the repo, and write metadata."""
     ensure_weights(local_dir)
+
+    if include_repo:
+        repo_root = repo_root or Path(__file__).resolve().parent.parent
+        package_repo(staging, repo_root)
+
 
     staging.mkdir(parents=True, exist_ok=True)
     for name in MODEL_FILES:
@@ -166,6 +215,17 @@ def main() -> None:
     )
     parser.add_argument("--staging-dir", type=Path, default=Path("build/dreams_kaggle_dataset"))
     parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path(__file__).resolve().parent.parent,
+        help="local git checkout of DreaMS to bundle (default: the repo containing this script)",
+    )
+    parser.add_argument(
+        "--no-include-repo",
+        action="store_true",
+        help="only package the checkpoints, not the repo source",
+    )
+    parser.add_argument(
         "--dataset-id",
         default=None,
         help="{username}/slug of the Kaggle dataset (default: auto-detected from kaggle credentials)",
@@ -196,6 +256,8 @@ def main() -> None:
         dataset_id=args.dataset_id,
         title=args.title,
         subtitle=args.subtitle,
+        include_repo=not args.no_include_repo,
+        repo_root=args.repo_root,
     )
 
     if args.upload or args.update:
