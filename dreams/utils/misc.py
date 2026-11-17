@@ -9,13 +9,13 @@ import networkx as nx
 import plotly.graph_objects as go
 from collections import Counter
 from typing import Sequence, Union
-from huggingface_hub import hf_hub_download
 from pathlib import Path
 from dreams.definitions import PRETRAINED
 from tqdm import tqdm
 
 
 def hf_download(repo_id: str, file_pth: str, local_dir: T.Optional[T.Union[str, Path]] = None, repo_type: str = "dataset") -> str:
+    from huggingface_hub import hf_hub_download  # lazy: huggingface_hub is optional (only for downloading weights)
     """
     Download a file from the Hugging Face Hub and return its location on disk.
     

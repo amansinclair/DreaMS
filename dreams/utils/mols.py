@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import numpy as np
 import pandas as pd
 import itertools
 import urllib
 import json
 import time
-import ase
+try:
+    import ase
+except Exception:
+    ase = None
 import rdkit
 import base64
 from io import BytesIO

@@ -11,14 +11,23 @@ import re
 import numpy as np
 import pandas as pd
 import rdkit.Chem as Chem
-import pyteomics
+try:
+    import pyteomics
+except Exception:
+    pyteomics = None
 import matplotlib.pyplot as plt
 import urllib.parse as urlparse
 import contextlib
 import time
-from lxml import etree
+try:
+    from lxml import etree
+except Exception:
+    etree = None
 import io as std_io
-import wandb
+try:
+    import wandb
+except Exception:
+    wandb = None
 with contextlib.redirect_stderr(std_io.StringIO()):
     try:
         import pyopenms as pyms

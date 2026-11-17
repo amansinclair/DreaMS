@@ -10,7 +10,6 @@ import torch
 from torch import nn
 import random
 import pickle
-import igraph
 import networkx as nx
 import scipy
 # import spectral_entropy
@@ -1621,6 +1620,7 @@ class CSRKNN:
         )
 
     def to_graph(self, directed=True, graph_class="igraph"):
+        import igraph  # lazy: igraph is optional
         """
         Convert CSR matrix to a graph object using the specified library.
         

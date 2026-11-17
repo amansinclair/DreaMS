@@ -1,9 +1,14 @@
+from __future__ import annotations
+
 import collections as coll
 import pandas as pd
 import numpy as np
 import statistics as stat
 import matplotlib.pyplot as plt
-import seaborn as sns
+try:
+    import seaborn as sns
+except Exception:
+    sns = None
 import pylab
 import matplotlib as mpl
 import plotly.graph_objects as go
