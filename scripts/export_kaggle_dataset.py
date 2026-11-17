@@ -99,9 +99,9 @@ def write_metadata(staging: Path, dataset_id: str, title: str, subtitle: str) ->
         "subtitle": subtitle,
         "licenses": [{"name": "MIT"}],
     }
-    with (staging / "kaggle-metadata.json").open("w") as f:
+    with (staging / "dataset-metadata.json").open("w") as f:
         json.dump(metadata, f, indent=2)
-    print(f"[*] wrote {staging / 'kaggle-metadata.json'}")
+    print(f"[*] wrote {staging / 'dataset-metadata.json'}")
 
 
 def package(local_dir: Path, staging: Path, dataset_id: str, title: str, subtitle: str) -> None:
@@ -127,9 +127,19 @@ def package(local_dir: Path, staging: Path, dataset_id: str, title: str, subtitl
     print("Files: " + ", ".join(sorted(p.name for p in staging.iterdir())))
 
 
+def find_kaggle_cli() -> str | None:
+    """Locate the ``kaggle`` CLI: on PATH, or in the current venv's bin dir."""
+    on_path = shutil.which("kaggle")
+    if on_path:
+        return on_path
+    venv_bin = Path(sys.executable).parent / "kaggle"
+    return str(venv_bin) if venv_bin.exists() else None
+
+
 def run_kaggle(staging: Path, update: bool, message: str) -> None:
     """Create a new dataset or upload a new version with the ``kaggle`` CLI."""
-    if not shutil.which("kaggle"):
+    kaggle_exe = find_kaggle_cli()
+    if kaggle_exe is None:
         print(
             "\n[!] 'kaggle' CLI not found. Install it with `pip install kaggle` and\n"
             "    add your credentials to ~/.kaggle/kaggle.json, then re-run with --upload.\n",
@@ -138,9 +148,9 @@ def run_kaggle(staging: Path, update: bool, message: str) -> None:
         sys.exit(1)
 
     if update:
-        cmd = ["kaggle", "datasets", "version", "-p", str(staging), "-m", message]
+        cmd = [kaggle_exe, "datasets", "version", "-p", str(staging), "-m", message]
     else:
-        cmd = ["kaggle", "datasets", "create", "-p", str(staging)]
+        cmd = [kaggle_exe, "datasets", "create", "-p", str(staging)]
 
     print(f"[*] running: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
@@ -157,8 +167,8 @@ def main() -> None:
     parser.add_argument("--staging-dir", type=Path, default=Path("build/dreams_kaggle_dataset"))
     parser.add_argument(
         "--dataset-id",
-        default="amansinclair/dreams-pretrained",
-        help="{username}/slug of the Kaggle dataset (default: amansinclair/dreams-pretrained)",
+        default=None,
+        help="{username}/slug of the Kaggle dataset (default: auto-detected from kaggle credentials)",
     )
     parser.add_argument("--title", default="DreaMS Pre-trained Model Weights")
     parser.add_argument("--subtitle", default="Pre-trained DreaMS SSL and embedding model checkpoints (Python 3.13 compatible)")
@@ -166,6 +176,19 @@ def main() -> None:
     parser.add_argument("--update", action="store_true", help="upload a new version instead of creating")
     parser.add_argument("--message", default="Updated DreaMS pretrained weights")
     args = parser.parse_args()
+
+    if args.dataset_id is None:
+        # Auto-detect the Kaggle username from the authenticated kaggle CLI.
+        try:
+            from kaggle import KaggleApi
+
+            api = KaggleApi()
+            api.authenticate()
+            args.dataset_id = f"{api.config_values[api.CONFIG_NAME_USER]}/dreams-pretrained"
+            print(f"[*] detected dataset id: {args.dataset_id}")
+        except Exception as exc:  # pragma: no cover - only when kaggle CLI is missing
+            print(f"[!] could not auto-detect Kaggle username ({exc}); pass --dataset-id explicitly.", file=sys.stderr)
+            sys.exit(1)
 
     package(
         local_dir=args.model_dir,
