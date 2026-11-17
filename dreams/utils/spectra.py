@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -6,8 +8,6 @@ from numba import njit
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import rdkit.Chem.Descriptors as rdkitDescriptors
-from matchms import Spectrum
-from matchms.similarity import ModifiedCosine
 import matplotlib
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
@@ -683,10 +683,12 @@ def from_hot_logits(vals: torch.Tensor, bin_size: float) -> torch.Tensor:
 
 class PeakListModifiedCosine:
     def __init__(self, mz_tolerance: float = 0.05, unpad: bool = True):
+        from matchms.similarity import ModifiedCosine  # lazy: matchms is optional
         self.cos_sim = ModifiedCosine(tolerance=mz_tolerance)
         self.unpad = unpad
 
     def _peak_list_to_matchms(self, peak_list: np.ndarray, prec_mz: float) -> Spectrum:
+        from matchms import Spectrum  # lazy: matchms is optional
         assert peak_list.shape[0] == 2, 'Peak list must have shape (2, num. of peaks).'
         if self.unpad:
             peak_list = unpad_peak_list(peak_list)

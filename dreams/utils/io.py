@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import sys
 import pickle
@@ -18,13 +20,14 @@ from lxml import etree
 import io as std_io
 import wandb
 with contextlib.redirect_stderr(std_io.StringIO()):
-    import pyopenms as pyms
+    try:
+        import pyopenms as pyms
+    except Exception:  # lazy/optional: pyopenms only needed for mzML parsing
+        pyms = None
 import traceback
 from collections import Counter
 from functools import cache
-from matchms.importing import load_from_mgf
 from pathlib import Path
-from matchms import Spectrum
 from typing import Tuple, List, Optional, Union, Iterable
 from itertools import groupby
 from tqdm import tqdm

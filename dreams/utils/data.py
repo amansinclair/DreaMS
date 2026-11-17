@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import pathlib
 import numpy as np
@@ -18,11 +20,8 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.data.dataset import Dataset, Subset
-from pandarallel import pandarallel
 from torchmetrics.functional import pairwise_cosine_similarity, pairwise_euclidean_distance
 from statistics import mean
-from matchms import Spectrum
-from matchms.exporting import save_as_mgf
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from rdkit import Chem
@@ -427,6 +426,8 @@ class MSData:
         if not out_pth.exists():
             out_pth.parent.mkdir(parents=True, exist_ok=True)
 
+        from matchms import Spectrum  # lazy: matchms is optional
+        from matchms.exporting import save_as_mgf  # lazy: matchms is optional
         spectra = []
         df = self.to_pandas()
         for _, row in tqdm(df.iterrows(), total=len(df), desc='Converting to matchms before saving to mgf'):
@@ -558,6 +559,7 @@ class MSData:
         return MSData(out_pth, **kwargs)
 
     def spec_to_matchms(self, i: int) -> Spectrum:
+        from matchms import Spectrum  # lazy: matchms is optional
         spec = su.unpad_peak_list(self.get_spectra(i))
         metadata = self.at(i, plot_spec=False, plot_mol=False, return_spec=False)
         return Spectrum(
@@ -2179,6 +2181,7 @@ class SSLProbingValidation(pl.Callback):
 
 
 def evaluate_split(df_split, n_workers=5, smiles_col=SMILES, fold_col='fold'):
+    from pandarallel import pandarallel  # lazy: pandarallel is optional
     """
     Evaluates data split based on the Morgan Tanimoto similarity between validation and train folds.
 
