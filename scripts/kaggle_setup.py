@@ -31,6 +31,7 @@ import argparse
 import shutil
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
 
 INPUT_DEFAULT = Path("/kaggle/input/dreams-pretrained")
@@ -58,19 +59,34 @@ def main() -> None:
     args = parser.parse_args()
 
     inp = args.input_dir
-    if not (inp / "DreaMS").exists():
+    repo_src = inp / "DreaMS"
+    repo_tar = inp / "DreaMS.tar"
+    if repo_src.exists():
+        pass
+    elif repo_tar.exists():
+        repo_src = None  # handled below
+    else:
         _fail(
-            f"repo not found at {inp / 'DreaMS'}. Add the "
-            "'smeeee/dreams-pretrained' dataset (or a newer version of it) "
+            f"repo not found at {inp / 'DreaMS'} (or {inp / 'DreaMS.tar'}). "
+            "Add the 'smeeee/dreams-pretrained' dataset (or a newer version of it) "
             "as an input to this notebook."
         )
 
-    # 1. Copy the repo out of the read-only dataset dir.
-    print(f"[1/4] copying repo: {inp / 'DreaMS'} -> {args.work_dir}")
+    # 1. Get the repo out of the read-only dataset dir.
+    print(f"[1/4] preparing repo -> {args.work_dir}")
     if args.work_dir.exists():
         shutil.rmtree(args.work_dir)
     args.work_dir.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(inp / "DreaMS", args.work_dir)
+    if repo_src is not None:
+        shutil.copytree(repo_src, args.work_dir)
+    else:
+        print(f"      extracting {repo_tar}")
+        with tarfile.open(repo_tar, "r") as tar:
+            tar.extractall(args.work_dir)
+        # The tar stores the repo contents at its root (or nested under
+        # DreaMS/), so normalize to the dir that actually contains setup.py.
+        if (args.work_dir / "DreaMS").exists() and not (args.work_dir / "setup.py").exists():
+            args.work_dir = args.work_dir / "DreaMS"
     if not (args.work_dir / "setup.py").exists():
         _fail(f"copied repo looks incomplete (no setup.py in {args.work_dir})")
 

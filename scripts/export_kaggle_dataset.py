@@ -196,10 +196,12 @@ def run_kaggle(staging: Path, update: bool, message: str) -> None:
         )
         sys.exit(1)
 
+    # -r tar: bundle the DreaMS/ repo directory instead of skipping it
+    # (the kaggle CLI ignores directories by default).
     if update:
-        cmd = [kaggle_exe, "datasets", "version", "-p", str(staging), "-m", message]
+        cmd = [kaggle_exe, "datasets", "version", "-p", str(staging), "-m", message, "-r", "tar"]
     else:
-        cmd = [kaggle_exe, "datasets", "create", "-p", str(staging)]
+        cmd = [kaggle_exe, "datasets", "create", "-p", str(staging), "-r", "tar"]
 
     print(f"[*] running: {' '.join(cmd)}")
     subprocess.run(cmd, check=True)
